@@ -1,0 +1,26 @@
+../preprocess_initial/ICE6G_original/ice180x360
+180 360
+122
+../preprocess_initial/ETOPO1+bedmap2_180x360.txt
+./ICE6G_1x1_refine_ocean_iter2
+../preprocess_initial/ICE6G_1x1_preprocessed/ocn180x360
+./combined_files/case_test
+../preprocess_initial/ETOPO1+bedmap2_180x360.txt
+
+
+
+
+
+
+# input file for preprocessing
+// First line: prefix for ice model files, for example: ICE6G_1x1_122/ice6g180x360
+// Second line: nlat, nlon: two numbers for grid: 180 360
+// third line: nepoch: number of epoches: for example 122, then it reads file ICE6G_1x1_122/ice6g180x360.X, where X is from 0 to 121 (including).
+// forth line: filename,   present-day topography file,  
+// fifth line: output directory
+// sixth line: prefix for ocean function files from previous iteration
+// seventh line: prefix for u,g files from previous iteration (on regular grid, ascii format)
+// eighth line: filename for the topography for the initial epoch used in the previous iteration
+        // for the second iteration (the one after first complete run), this is the present day topography, 
+            // and A3_refine_ocnfunc with this input script will also write out a file in output directory,
+            // named paleotopo_epoch0.dat, which can be used for the following iterations.

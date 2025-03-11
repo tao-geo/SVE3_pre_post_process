@@ -1,0 +1,15 @@
+ICE6G_original/ice180x360
+180 360
+122
+ETOPO1+bedmap2_180x360.txt
+./ICE6G_1x1_preprocessed
+
+
+
+
+# input file for preprocessing
+First line: prefix for original ice model files, for example: ICE6G_1x1_122/ice6g180x360
+Second line: nlat, nlon: two numbers for grid: 180 360
+third line: nepoch is number of epoches. for example if being 122, it will read file ICE6G_1x1_122/ice6g180x360.X, where X is from 0 to 121 (including).
+forth line: filename: present-day topography file, should be on same grid format as input ice model.
+fifth line: the directory to save processed file (ice* and ocn* for grounded ice and ocn functions)
