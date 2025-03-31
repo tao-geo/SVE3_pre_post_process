@@ -64,7 +64,7 @@ void find_groundice_ocean_mask(const double *topo, const double *ice_thickness,
 double get_surface_integral(const double * data, const double * lat_grid, const double * lon_grid, int nlat, int nlon);
 double get_surface_integral_int(const int * mask, const double * lat_grid, const double * lon_grid, int nlat, int nlon);
 double solve_for_ocean_func(int epoch);
-void write_ocean_func(int epoch);   
+void write_ice_ocean_func(int epoch);   
 
 
 int main(int argc, char **argv)
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
         fprintf(fp_log, "epoch: %d, ocean area: %f\n", epoch, ocean_area/(4.0*M_PI));
 
         // write to file
-        write_ocean_func(epoch);
+        write_ice_ocean_func(epoch);
     }
 
     fclose(fp_log);
@@ -320,7 +320,7 @@ double get_surface_integral_int(const int * mask, const double * lat_grid, const
 
 */
 
-void write_ocean_func(int epoch){
+void write_ice_ocean_func(int epoch){
 
     int nlat = all_data.nlat;
     int nlon = all_data.nlon;
@@ -330,8 +330,8 @@ void write_ocean_func(int epoch){
     char ice_filename[250];
     char ocean_filename[250];
 
-    sprintf(ice_filename, "%s/ice%dx%d.%d", all_data.out_dir, nlat, nlon, epoch);
-    sprintf(ocean_filename, "%s/ocn%dx%d.%d", all_data.out_dir, nlat, nlon, epoch);
+    sprintf(ice_filename, "%s/ice.%d", all_data.out_dir, epoch);
+    sprintf(ocean_filename, "%s/ocn.%d", all_data.out_dir, epoch);
 
     printf("Writing to files: %s, %s\n", ice_filename, ocean_filename);
 
@@ -347,6 +347,10 @@ void write_ocean_func(int epoch){
         fprintf(stderr, "Error: cannot open file %s\n", ocean_filename);
         return;
     }
+
+    // write the header (nlon, nlat)
+    fprintf(fp_icefile, "%d %d\n", nlon, nlat);
+    fprintf(fp_oceanfile, "%d %d\n", nlon, nlat);
 
     double * topo_correction = (double *) malloc(nlat * nlon * sizeof(double));
 
