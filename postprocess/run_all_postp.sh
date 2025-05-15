@@ -1,12 +1,12 @@
 # run with bash run_all_postp.sh
 
 ## control which steps to run: 0 means skip ##
-run_step_1=0
+run_step_1=1
 
 run_step_2=0
-run_step_2_MultiThreads=0
+run_step_2_MultiThreads=1
 
-run_step_3=0
+run_step_3=1
 
 run_step_4=1
 
@@ -14,34 +14,34 @@ run_step_4=1
 
 #######################    parameters needed to be specified    #######################
 
-SVE_output_prefix=../../link_scratch_BM_SLE/case_test/case_test   # prefix of the SVE generated output files
-fn_header=case_test.header     # the header file name that will be generated in the first step, and used in the following steps
+SVE_output_prefix=../BM_ICE6G/case6   # prefix of the SVE generated output files
+fn_header=case6.header     # the header file name that will be generated in the first step, and used in the following steps
                                 # it constains the timesteps, time, delta_t, RSL_c and other information.
 
-start_timestep=1    # the starting timestep to do post process. (not necessarily the first timestep of SVE generated output files)
-end_timestep=976    # the ending timestep to do post process.
+start_timestep=392    # the starting timestep to do post process. (not necessarily the first timestep of SVE generated output files)
+end_timestep=592    # the ending timestep to do post process.
 
-save_to_dir=./combined_files_case_test/        # the directory to save the combined files (and other generated files)
-save_to_file_prefix=${save_to_dir}/case_test   # the prefix of the combined files
-ncpu_surface=48 #48    # number of cpus in the surface
+save_to_dir=./combined_files_case_v3/        # the directory to save the combined files (and other generated files)
+save_to_file_prefix=${save_to_dir}/case_v3   # the prefix of the combined files
+ncpu_surface=192 #48    # number of cpus in the surface
 ncpu_z=2            # number of cpus in the z direction
-node_x_y=41   #41      # number of nodes in x and y directions (for each cpu)
+node_x_y=33   #41      # number of nodes in x and y directions (for each cpu)
 
 nthreads=12         # used in the multi-thread version
 
-resolution=1    # resolution of regular grid (in degree)
+resolution=0.5    # resolution of regular grid (in degree)
                 # the regular grid's resolution created by GMT nearneighbor method,
                 # on a regular grid with lon from 0 to 360, lat from -90 to 90. (Caution: not from resolution/2 to 360-resolution/2, -90+resolution/2 to 90-resolution/2)
-nlat=181   # number of latitudes in the regular grid
-nlon=361   # number of longitudes in the regular grid  (although this could be calculated from $resolution)
+nlat=361   # number of latitudes in the regular grid
+nlon=721   # number of longitudes in the regular grid  (although this could be calculated from $resolution)
 
 
-fn_RSL_c=case_test.RSL_c    # the filename for generated RSL_c (timestep, time, RSL_c)
+fn_RSL_c=case_v3.RSL_c    # the filename for generated RSL_c (timestep, time, RSL_c)
 
 fn_RSL_sites=RSL_sites_groupA.posi  # (USER PREPARED FILE) the file that contains the lon, lat (and may also name of sites)
 # !!! fn_RSL_sites's first line should be the number of sites
 
-fn_RSL_out=RSL_sites_groupA.out.case_test  # the output file that contains the calculated RSL for fn_RSL_sites
+fn_RSL_out=RSL_sites_groupA.out.case_v3  # the output file that contains the calculated RSL for fn_RSL_sites
 
 
 
@@ -68,11 +68,10 @@ a=$start_timestep          # starting_timestep
 b=$end_timestep            # ending_timestep
 c=${SVE_output_prefix}     # prefix for topo files, need this input to get at least one surface cpu
 d=${fn_header}             # output file name
-e=${ncpu_z}                # number of cpus in the z direction
 
 # run
 if [ $run_step_1 -eq 1 ]; then
-    ./A0_timestep_and_time $a $b $c $d $e
+    sh ./A0_get_timedep.sh $a $b $c $d
 fi
 
 

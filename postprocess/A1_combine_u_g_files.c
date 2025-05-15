@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 
       sprintf(filename, "%s.topo_s.%d.%d", argv[1], ip, timestep);
       fp1 = fopen(filename, "r");   if (fp1 == NULL) { fprintf(stderr, "Error: cannot open file %s\n", filename); exit(1); }
-      fgets(input_s, 500, fp1); // header descp
+      // fgets(input_s, 500, fp1); // header descp
       fgets(input_s, 500, fp1); // header numbers
 
       for (i = 1; i <= nno; i++) {
