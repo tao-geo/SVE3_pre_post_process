@@ -88,7 +88,7 @@ int main(int argc, char **argv)
       if(stage != 0){  // no file for the first epoch
         sprintf(filename, "%s.topo_s.%d.%d", argv[1], ip, nstep);
         fp1 = fopen(filename, "r");   if (fp1 == NULL) { fprintf(stderr, "Error: cannot open file %s\n", filename); exit(1); }
-        fgets(input_s, 500, fp1); // header descp
+        // fgets(input_s, 500, fp1); // header descp
         fgets(input_s, 500, fp1); // header numbers
       }
 

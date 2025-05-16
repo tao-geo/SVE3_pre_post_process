@@ -32,7 +32,7 @@ Notes:
 */
 void construct_variables(char* inputfilename);
 void read_grid_file(char * filename, double * griddata);
-void read_grid_file_int(char * filename, int * griddata);
+void read_grid_file_int(char * filename, int * griddata, int nskip);
 void read_ice_height(const char * ice_prefix, int epoch, double * ice_height);
 double get_surface_integral_int(const int * mask, const double * lat_grid, const double * lon_grid, int nlat, int nlon);
 double get_surface_integral(const double * data, const double * lat_grid, const double * lon_grid, int nlat, int nlon);
@@ -146,7 +146,7 @@ int main(int argc, char ** argv){
 
         char prev_ocean_filename[250];
         sprintf(prev_ocean_filename, "%s.%d", all_data.prevIter_ocean_prefix, epoch);
-        read_grid_file_int(prev_ocean_filename, all_data.prev_ocean_function_currentEpoch); 
+        read_grid_file_int(prev_ocean_filename, all_data.prev_ocean_function_currentEpoch, 1); 
                 // temoprary use ocean_function_currentEpoch to store previous iteration ocean function
 
 
@@ -213,8 +213,8 @@ void write_ice_and_ocean_func(){
     char ice_filename[250];
     char ocean_filename[250];
 
-    sprintf(ice_filename, "%s/ice%dx%d.%d", all_data.out_dir, nlat, nlon, epoch);
-    sprintf(ocean_filename, "%s/ocn%dx%d.%d", all_data.out_dir, nlat, nlon, epoch);
+    sprintf(ice_filename, "%s/ice.%d", all_data.out_dir, epoch);
+    sprintf(ocean_filename, "%s/ocn.%d", all_data.out_dir, epoch);
 
     printf("Writing to files: %s, %s\n", ice_filename, ocean_filename);
 
@@ -230,6 +230,9 @@ void write_ice_and_ocean_func(){
         fprintf(stderr, "Error: cannot open file %s\n", ocean_filename);
         return;
     }
+    // write the header (nlon, nlat)
+    fprintf(fp_icefile, "%d %d\n", nlon, nlat);
+    fprintf(fp_oceanfile, "%d %d\n", nlon, nlat);
 
     double * topo_correction = (double *) malloc(nlat * nlon * sizeof(double));
 
@@ -409,10 +412,10 @@ void helper_get_Delta_SL_presentday(double * Delta_SL_presentday)
     double * prevIter_groundIce_height_initialEpoch = (double *) malloc(nlat * nlon * sizeof(double));
 
     sprintf(prev_ocean_filename, "%s.%d", all_data.prevIter_ocean_prefix, presentday_epoch);
-    read_grid_file_int(prev_ocean_filename, prev_ocean_function_presentday); 
+    read_grid_file_int(prev_ocean_filename, prev_ocean_function_presentday, 1); 
 
     sprintf(prev_ocean_filename, "%s.%d", all_data.prevIter_ocean_prefix, 0);
-    read_grid_file_int(prev_ocean_filename, prev_ocean_function_initialEpoch); 
+    read_grid_file_int(prev_ocean_filename, prev_ocean_function_initialEpoch, 1); 
 
 
 
@@ -880,7 +883,7 @@ void read_grid_file(char * filename, double * griddata){
 }
 
 /* for int type */
-void read_grid_file_int(char * filename, int * griddata){
+void read_grid_file_int(char * filename, int * griddata, int nskips){
     FILE * fp_gridfile; // file pointer for grid file
     char buffer[250];
     double lon, lat;
@@ -896,6 +899,12 @@ void read_grid_file_int(char * filename, int * griddata){
     int nlon = all_data.nlon;
     const double * lat_grid = all_data.lat_grid;
     const double * lon_grid = all_data.lon_grid;
+
+    if (nskips > 0){
+        for(int i=0; i<nskips; i++){
+            fgets(buffer, 250, fp_gridfile);
+        }
+    }
 
     // read the grid data
     for(int i=0; i<nlat; i++){

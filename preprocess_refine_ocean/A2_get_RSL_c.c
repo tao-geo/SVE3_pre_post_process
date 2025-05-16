@@ -15,22 +15,23 @@ ice6g_122ka_stages_timeB.epoch_to_timestep.txt ../link_scratch_BM_SLE/case_v1_t2
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-int DEBUG = 0;
+int DEBUG = 1;
 
 int main(int argc, char ** argv)
 {
-    char topo_prefix[250], outputfile[250];
+    char timedep_file[250], outputfile[250];
     char stage2timestep_file[250];
     int pos_RSL_c; // position of RSL_c in the header
 
     /* input parameters */
     sprintf(stage2timestep_file, "%s", argv[1]);
-    sprintf(topo_prefix, "%s", argv[2]);
+    sprintf(timedep_file, "%s", argv[2]);
     sscanf(argv[3], "%d", &pos_RSL_c);
     sprintf(outputfile, "%s", argv[4]);
 
-    FILE * fp_topo, *fp_stage2timestep, * fp_out;
+    FILE * fp_timedep, *fp_stage2timestep, * fp_out;
 
     if((fp_stage2timestep = fopen(stage2timestep_file, "r")) == NULL)
     {
@@ -42,6 +43,8 @@ int main(int argc, char ** argv)
 
     int nstages;
     char line[250];
+    char word[250];
+    double RSL_c;
     int * stages2timestep;
     fgets(line, 250, fp_stage2timestep);
     sscanf(line, "%d", &nstages);
@@ -67,33 +70,55 @@ int main(int argc, char ** argv)
     fprintf(fp_out, "0 %d 0.0\n", stages2timestep[0]); // write 0 for the first epoch (as it is not in the topo file)
 
 
-    /*read header of topo file */
+    /*read time_dep file */
 
-    char topo_file[250];
 
-    for (int epoch=1; epoch<nstages; epoch++){
-        sprintf(topo_file, "%s.%d", topo_prefix, stages2timestep[epoch]);
-        if((fp_topo = fopen(topo_file, "r")) == NULL)
-        {
-            printf("Error! opening file %s", topo_file);
-            exit(1);
-        }
-
-        fgets(line, 250, fp_topo); // skip first row
-
-        for(int i = 0; i <= pos_RSL_c; i++)
-        {
-            fscanf(fp_topo, "%s", line);  // line here is not "line", but word (space separated)
-        }
-        fprintf(fp_out, "%d %d %s\n", epoch, stages2timestep[epoch], line);
-
-        if(DEBUG)
-            printf("%d %d %s\n", epoch, stages2timestep[epoch], line);
-
-        fclose(fp_topo);
+    if((fp_timedep = fopen(timedep_file, "r")) == NULL)
+    {
+        printf("Error! opening file %s", timedep_file);
+        exit(1);
     }
 
+    fgets(line, 250, fp_timedep); // skip first row
 
+    for (int epoch=1; epoch<nstages; epoch++){
+        
+        do {
+            fgets(line, 250, fp_timedep);
+            sscanf(line, "%d", &temp_int);
+        } while (temp_int != stages2timestep[epoch]); // find the line with the same epoch number
+
+        printf("found epoch %d in line %s\n", temp_int, line);
+
+        // now we are at the line with the same epoch number, and we already the first number
+
+        // for(int i = 0; i <= pos_RSL_c; i++)
+        // {
+        //     // fscanf(fp_timedep, "%s", line);  // line here is not "line", but word (space separated)
+        //     sscanf(line, "%s", word);
+        // }
+
+        // read the pos_RSL_c-th word from line
+        char *token = strtok(line, " \t\n");
+        int count = 0;
+        while (token != NULL) {
+            sscanf(token, "%lf", &RSL_c);
+            token = strtok(NULL, " \t\n");
+            count++;
+            if (count == pos_RSL_c) {
+                break;
+            }
+        }
+
+
+        fprintf(fp_out, "%d %d %e\n", epoch, stages2timestep[epoch], RSL_c);
+
+        if(DEBUG)
+            printf("%d %d %e\n", epoch, stages2timestep[epoch], RSL_c);
+
+    }
+    
+    fclose(fp_timedep);
     fclose(fp_stage2timestep);
     fclose(fp_out);
     

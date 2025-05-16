@@ -4,31 +4,31 @@
 # may need to modify the code to change some default settings (e.g. gmt path, gmt interpolation parameters)
 
 # set to 0 to skip the step
-run_step_A=0
-run_step_B=0
-run_step_C=0
+run_step_A=1
+run_step_B=1
+run_step_C=1
 
 
 # Step A: get timestep for each **epoch** (same epoch as input ice model), and get RSL_c
     # the suffix of saved files is based on epoch (0,1,.. nepoch-1), not timestep. Thats why we need to convert epoch to timestep.
 
 # parameters to set:
-stage_time_file=../ice6g_122ka_stages_timeB.dat  
+stage_time_file=../ice6g_122ka_stages_timeD.dat  
                         # the stage_time file used in SVE calculation
 
-saved_stage_timestep_file=ice6g_122ka_stages_timeB.epoch_to_timestep.txt   
+saved_stage_timestep_file=ice6g_122ka_stages_timeD.epoch_to_timestep.txt   
                         # filename, to save file for epoch to timestep conversion
 
-one_topo_file_without_suffix=../../link_scratch_BM_SLE/case_test/case_test.topo_s.1  
-                        # one topo file without suffix (suffix is timestep)
+fn_timedep=/glade/derecho/scratch/taoyuan/Proj_Nonlinear_GIA/case_S3/case_S3.time_dep
+                        # timedep file
 
-position_of_RSL_c_in_Header=8   # the position of RSL_c in the header file 
-output_RSL_c_file=case_test.RSL_c    # the output RSL_c file, only for epoch, not every timestep output
+position_of_RSL_c_in_Header=9   # the position of RSL_c in the header file 
+output_RSL_c_file=case_S3.RSL_c    # the output RSL_c file, only for epoch, not every timestep output
 # end of parameters
 
 a=$stage_time_file
 b=$saved_stage_timestep_file
-c=$one_topo_file_without_suffix
+c=$fn_timedep
 d=$position_of_RSL_c_in_Header
 e=$output_RSL_c_file
 
@@ -41,12 +41,12 @@ fi
 # Step B: get uplift and geoid on regular grid (same grid as input ice model)
 
 # parameters to set:
-SVE_output_prefix=../../link_scratch_BM_SLE/case_test/case_test
-save_to_dir=./combined_files/
-save_to_file_prefix=${save_to_dir}/case_test
-ncpu_surface=48        #48    # number of cpus in the surface
+SVE_output_prefix=/glade/derecho/scratch/taoyuan/Proj_Nonlinear_GIA/case_S3/case_S3
+save_to_dir=./combined_files_case_S3/
+save_to_file_prefix=${save_to_dir}/case_S3
+ncpu_surface=108        #48    # number of cpus in the surface
 ncpu_z=2            # number of cpus in the z direction
-node_x_y=41         #41      # number of nodes in x and y directions (for each cpu)
+node_x_y=33         #41      # number of nodes in x and y directions (for each cpu)
 nepochs=122
 resolution=1    # resolution of regular grid (in degree)
 # end of parameters
@@ -64,6 +64,8 @@ if [ $run_step_B -eq 1 ]; then
 fi
 
 wait
+
+
 # Step C: update ocean function and ice model (check for floating ice). Following [Kendall 2005]
 
 # parameters: 
@@ -75,4 +77,4 @@ fi
 
 # finally, remove intermediate files
 
-rm -r ./combined_files
+# rm -r ./combined_files

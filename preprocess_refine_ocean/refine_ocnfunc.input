@@ -3,8 +3,8 @@
 122
 ../preprocess_initial/ETOPO1+bedmap2_180x360.txt
 ./ICE6G_1x1_refine_ocean_iter2
-../preprocess_initial/ICE6G_1x1_preprocessed/ocn180x360
-./combined_files/case_test
+../preprocess_initial/ICE6G_1x1_iter1/ocn
+./combined_files_case_S3/case_S3
 ../preprocess_initial/ETOPO1+bedmap2_180x360.txt
 
 
