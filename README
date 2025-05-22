@@ -40,7 +40,6 @@ in postprocess directory.
 
 See Yuan et al, 2025, in review or Kendall et al., 2005 for details about running multiple iterations for topography iteration.
 
-(use with caution, this has not benchmarked carefully, although some simple comparison looks fine.)
 
 Similar to Step 1,
 1. run  `make` to compile files
