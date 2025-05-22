@@ -64,25 +64,27 @@ struct {
             // output files (directory). files name are ice${nlat}x${nlon}.${epoch} and ocn${nlat}x${nlon}.${epoch}
 
     // Data arrays, make sure every one is assigned with values (not just allocated memory)
+    // naming: initial/current means initial epoch (0) and current epoch (during loop); presentday means present-day (last epoch)
+            // ocn mean ocean function
     double *lat_grid;
     double *lon_grid;
     double *topo_presentday;
-    double *topo_initialEpoch;    
-    double *ice_height_currentEpoch;  // used in finding floating ice
-    int *groundIce_mask_currentEpoch;   // used in finding floating ice
+    double *topo_initial;    
+    double *ice_height_current;  // used in finding floating ice
+    int *groundIce_mask_current;   // used in finding floating ice
 
-    int *ocean_function_currentEpoch;         // saved to files
-    double * groundIce_height_currentEpoch;  // saved to files
-    double * groundIce_height_initialEpoch;  // needed to subtract for following epoches
-    int * ocean_function_initialEpoch;    // needed for topo correction
+    int * ocn_current;         // saved to files
+    int * ocn_initial;    // needed for topo correction
+    double * groundIce_height_current;  // saved to files
+    double * groundIce_height_initial;  // needed to subtract for following epoches
 
     // previous iteration data
-    double * prevIter_groundIce_height_currentEpoch;  // used to get delta I.
-    double * prevIter_groundIce_height_initialEpoch;
-    double * prevIter_topo_initialEpoch; // used to get delta SL
+    double * prevIter_groundIce_height_current;  // used to get delta I.
+    double * prevIter_groundIce_height_initial;
+    double * prevIter_topo_initial; // used to get delta SL
     
-    int * prev_ocean_function_currentEpoch;
-    int * prev_ocean_function_initialEpoch;
+    int * prevIter_ocn_current;
+    int * prevIter_ocn_initial;  // ocean function of initial epoch for the previous iteration 
     // double * Delta_SL_presentday;
     // int *ocean_function_presentday; // NOT USED IN THIS CODE
     // int *groundIce_mask_presentday;  // NOT USED IN THIS CODE
@@ -146,32 +148,32 @@ int main(int argc, char ** argv){
 
         char prev_ocean_filename[250];
         sprintf(prev_ocean_filename, "%s.%d", all_data.prevIter_ocean_prefix, epoch);
-        read_grid_file_int(prev_ocean_filename, all_data.prev_ocean_function_currentEpoch, 1); 
-                // temoprary use ocean_function_currentEpoch to store previous iteration ocean function
+        read_grid_file_int(prev_ocean_filename, all_data.prevIter_ocn_current, 1); 
+                // temoprary use ocn_current to store previous iteration ocean function
 
 
-        // get previous iteration grounded ice load
-        read_ice_height(all_data.ice_prefix, epoch, all_data.ice_height_currentEpoch);
+        // get previous iteration grounded ice load (total ice height)
+        read_ice_height(all_data.ice_prefix, epoch, all_data.ice_height_current);
         for(int node=0; node<nlat*nlon; node++){
-            all_data.prevIter_groundIce_height_currentEpoch[node] = 
-                    all_data.ice_height_currentEpoch[node] * (1.0 - all_data.prev_ocean_function_currentEpoch[node]);
+            all_data.prevIter_groundIce_height_current[node] = 
+                    all_data.ice_height_current[node] * (1.0 - all_data.prevIter_ocn_current[node]);
         }
 
         // save groundIce_height for epoch 0 for future use
         if(epoch==0){   
             for(int node=0; node<nlat*nlon; node++){
-                all_data.prevIter_groundIce_height_initialEpoch[node] = 
-                        all_data.prevIter_groundIce_height_currentEpoch[node];
-                all_data.prev_ocean_function_initialEpoch[node] = all_data.prev_ocean_function_currentEpoch[node];
+                all_data.prevIter_groundIce_height_initial[node] = 
+                        all_data.prevIter_groundIce_height_current[node];
+                all_data.prevIter_ocn_initial[node] = all_data.prevIter_ocn_current[node];
             }
         }
 
         /*
             Get new ocean function and grounded ice load for current epoch
             find_topo_ocean_and_total_load() constructs: 
-                groundIce_height_currentEpoch
-                ocean_function_currentEpoch
-                ocean_function_initialEpoch (used for topo correction)
+                groundIce_height_current
+                ocn_current
+                ocn_initial (used for topo correction)
         */
 
         
@@ -196,7 +198,7 @@ int main(int argc, char ** argv){
 
 /*
     write out files as SVE input:
-        1. ice load (grounded: groundIce_height_currentEpoch) + topo correction. Relative to first epoch.
+        1. ice load (grounded: groundIce_height_current) + topo correction. Relative to first epoch.
         2. ocean function
         3. years.reverse
 
@@ -237,9 +239,9 @@ void write_ice_and_ocean_func(){
     double * topo_correction = (double *) malloc(nlat * nlon * sizeof(double));
 
     for(int node=0; node<nlat*nlon; node++){
-        topo_correction[node] = all_data.topo_presentday[node] *
-                                (all_data.ocean_function_currentEpoch[node] -
-                                all_data.ocean_function_initialEpoch[node]) *
+        topo_correction[node] = all_data.topo_initial[node] *
+                                (all_data.ocn_current[node] -
+                                all_data.ocn_initial[node]) *
                                 (RHO_water / RHO_ice);
     }
 
@@ -250,11 +252,11 @@ void write_ice_and_ocean_func(){
             node = i*nlon + j;
             // write ice load
             fprintf(fp_icefile, "%10.4E %10.4E %11.5E\n", lon_grid[j], lat_grid[i], 
-                    all_data.groundIce_height_currentEpoch[node] - topo_correction[node]);
+                    all_data.groundIce_height_current[node] - topo_correction[node]);
 
             // write ocean function
             fprintf(fp_oceanfile, "%10.4E %10.4E %d\n", lon_grid[j], lat_grid[i], 
-                    all_data.ocean_function_currentEpoch[node]);
+                    all_data.ocn_current[node]);
         }
     }
 
@@ -297,7 +299,7 @@ void write_topo_initialEpoch(){
             node = i*nlon + j;
             // write ice load
             fprintf(fp_topo, "%10.4E %10.4E %11.5E\n", lon_grid[j], lat_grid[i], 
-                    all_data.topo_initialEpoch[node]);
+                    all_data.topo_initial[node]);
         }
     }
 
@@ -325,7 +327,7 @@ get Delta_SL;
 
 A potential problem for this function:
     It is not status independent - here if not only depends on epoch,
-    but also **implicitly** depends on prev_ocean_function_currentEpoch and prevIter_groundIce_height_currentEpoch,
+    but also **implicitly** depends on prevIter_ocn_current and prevIter_groundIce_height_current,
     which could be inconsistent with the **epoch** passed as argument.
 
 */
@@ -359,24 +361,24 @@ void helper_get_Delta_SL(int epoch, double * Delta_SL){
     double A00, I00, dyn00;
     double c;
 
-    A00 = get_surface_integral_int(all_data.prev_ocean_function_currentEpoch, 
+    A00 = get_surface_integral_int(all_data.prevIter_ocn_current, 
                                 all_data.lat_grid, all_data.lon_grid, 
                                     nlat, nlon);
 
-    I00 = get_surface_integral(all_data.prevIter_groundIce_height_currentEpoch,
+    I00 = get_surface_integral(all_data.prevIter_groundIce_height_current,
                                 all_data.lat_grid, all_data.lon_grid,
                                     nlat, nlon);
     
-    I00 -= get_surface_integral(all_data.prevIter_groundIce_height_initialEpoch,
+    I00 -= get_surface_integral(all_data.prevIter_groundIce_height_initial,
                                 all_data.lat_grid, all_data.lon_grid,
                                     nlat, nlon);
     
     double * dyn = (double *) malloc(nlat * nlon * sizeof(double));
     
     for(int node=0; node<nlat*nlon; node++){
-        dyn[node] = (g[node] - u[node]) * all_data.prev_ocean_function_currentEpoch[node] -
-                    all_data.prevIter_topo_initialEpoch[node] * 
-                    (all_data.prev_ocean_function_currentEpoch[node] - all_data.prev_ocean_function_initialEpoch[node]);
+        dyn[node] = (g[node] - u[node]) * all_data.prevIter_ocn_current[node] -
+                    all_data.prevIter_topo_initial[node] * 
+                    (all_data.prevIter_ocn_current[node] - all_data.prevIter_ocn_initial[node]);
     }
 
     dyn00 = get_surface_integral(dyn, all_data.lat_grid, all_data.lon_grid, nlat, nlon);
@@ -405,17 +407,17 @@ void helper_get_Delta_SL_presentday(double * Delta_SL_presentday)
     char prev_ocean_filename[250];
 
     int * prev_ocean_function_presentday = (int *) malloc(nlat * nlon * sizeof(int));
-    int * prev_ocean_function_initialEpoch = (int *) malloc(nlat * nlon * sizeof(int));
+    int * prevIter_ocn_initial = (int *) malloc(nlat * nlon * sizeof(int));
     double * ice_height_presentday = (double *) malloc(nlat * nlon * sizeof(double));
     double * ice_height_initialEpoch = (double *) malloc(nlat * nlon * sizeof(double));
     double * prevIter_groundIce_height_presentday = (double *) malloc(nlat * nlon * sizeof(double));
-    double * prevIter_groundIce_height_initialEpoch = (double *) malloc(nlat * nlon * sizeof(double));
+    double * prevIter_groundIce_height_initial = (double *) malloc(nlat * nlon * sizeof(double));
 
     sprintf(prev_ocean_filename, "%s.%d", all_data.prevIter_ocean_prefix, presentday_epoch);
     read_grid_file_int(prev_ocean_filename, prev_ocean_function_presentday, 1); 
 
     sprintf(prev_ocean_filename, "%s.%d", all_data.prevIter_ocean_prefix, 0);
-    read_grid_file_int(prev_ocean_filename, prev_ocean_function_initialEpoch, 1); 
+    read_grid_file_int(prev_ocean_filename, prevIter_ocn_initial, 1); 
 
 
 
@@ -426,8 +428,8 @@ void helper_get_Delta_SL_presentday(double * Delta_SL_presentday)
     for(int node=0; node<nlat*nlon; node++){
         prevIter_groundIce_height_presentday[node] = 
                 ice_height_presentday[node] * (1.0 - prev_ocean_function_presentday[node]);
-        prevIter_groundIce_height_initialEpoch[node] = 
-                ice_height_initialEpoch[node] * (1.0 - prev_ocean_function_initialEpoch[node]);
+        prevIter_groundIce_height_initial[node] = 
+                ice_height_initialEpoch[node] * (1.0 - prevIter_ocn_initial[node]);
     }
 
     
@@ -453,7 +455,7 @@ void helper_get_Delta_SL_presentday(double * Delta_SL_presentday)
                                 all_data.lat_grid, all_data.lon_grid,
                                     nlat, nlon);
     
-    I00 -= get_surface_integral(prevIter_groundIce_height_initialEpoch,
+    I00 -= get_surface_integral(prevIter_groundIce_height_initial,
                                 all_data.lat_grid, all_data.lon_grid,
                                     nlat, nlon);
     
@@ -461,8 +463,8 @@ void helper_get_Delta_SL_presentday(double * Delta_SL_presentday)
     
     for(int node=0; node<nlat*nlon; node++){
         dyn[node] = (g[node] - u[node]) * prev_ocean_function_presentday[node] -
-                    all_data.prevIter_topo_initialEpoch[node] * 
-                    (prev_ocean_function_presentday[node] - prev_ocean_function_initialEpoch[node]);
+                    all_data.prevIter_topo_initial[node] * 
+                    (prev_ocean_function_presentday[node] - prevIter_ocn_initial[node]);
     }
 
     dyn00 = get_surface_integral(dyn, all_data.lat_grid, all_data.lon_grid, nlat, nlon);
@@ -480,11 +482,11 @@ void helper_get_Delta_SL_presentday(double * Delta_SL_presentday)
     free(u);
     free(dyn);
     free(prev_ocean_function_presentday);
-    free(prev_ocean_function_initialEpoch);
+    free(prevIter_ocn_initial);
     free(ice_height_presentday);
     free(ice_height_initialEpoch);
     free(prevIter_groundIce_height_presentday);
-    free(prevIter_groundIce_height_initialEpoch);
+    free(prevIter_groundIce_height_initial);
 
     return;
 
@@ -495,9 +497,9 @@ Purpose:
         Find topo, ocean, and total load for one epoch
 
 Construct: 
-    groundIce_height_currentEpoch
-    ocean_function_currentEpoch
-    ocean_function_initialEpoch
+    groundIce_height_current
+    ocn_current
+    ocn_initial
 */
 void find_topo_ocean_and_total_load(int epoch, double * A00, double * I00){
     int nlat = all_data.nlat;
@@ -540,7 +542,7 @@ void find_topo_ocean_and_total_load(int epoch, double * A00, double * I00){
 
     if (epoch == 0) {
         for (int node = 0; node < nlat * nlon; node++) {
-            all_data.topo_initialEpoch[node] = topo_currentEpoch[node];
+            all_data.topo_initial[node] = topo_currentEpoch[node];
         }
     }
 
@@ -551,42 +553,42 @@ void find_topo_ocean_and_total_load(int epoch, double * A00, double * I00){
     }
 
     // find ground ice and ocean mask
-    find_groundice_ocean_mask(topo_currentEpoch, all_data.ice_height_currentEpoch,
-                                all_data.groundIce_mask_currentEpoch, all_data.ocean_function_currentEpoch);
+    find_groundice_ocean_mask(topo_currentEpoch, all_data.ice_height_current,
+                                all_data.groundIce_mask_current, all_data.ocn_current);
 
     // find ground ice height
     for(int node=0; node<nlat*nlon; node++){
-        all_data.groundIce_height_currentEpoch[node] = all_data.ice_height_currentEpoch[node] * 
-                                                        all_data.groundIce_mask_currentEpoch[node];
+        all_data.groundIce_height_current[node] = all_data.ice_height_current[node] * 
+                                                        all_data.groundIce_mask_current[node];
     }
 
     // subtract initial epoch -> get relative change in ground ice height
-    // groundIce_height_currentEpoch now is relative to the first epoch
+    // groundIce_height_current now is relative to the first epoch
     if (epoch == 0) {
         for (int node = 0; node < nlat * nlon; node++) {
-            all_data.groundIce_height_initialEpoch[node] =
-                all_data.groundIce_height_currentEpoch[node];
+            all_data.groundIce_height_initial[node] =
+                all_data.groundIce_height_current[node];
             
-            all_data.groundIce_height_currentEpoch[node] = 0.0;
+            all_data.groundIce_height_current[node] = 0.0;
 
-            all_data.ocean_function_initialEpoch[node] = all_data.ocean_function_currentEpoch[node];
+            all_data.ocn_initial[node] = all_data.ocn_current[node];
         }
     } else {
         for (int node = 0; node < nlat * nlon; node++) {
             // subtract initial epoch
-            all_data.groundIce_height_currentEpoch[node] =
-                all_data.groundIce_height_currentEpoch[node] -
-                all_data.groundIce_height_initialEpoch[node];
+            all_data.groundIce_height_current[node] =
+                all_data.groundIce_height_current[node] -
+                all_data.groundIce_height_initial[node];
         }
     }
 
     // double I00, A00;
-    I00[0] = get_surface_integral(all_data.groundIce_height_currentEpoch,
+    I00[0] = get_surface_integral(all_data.groundIce_height_current,
                                 all_data.lat_grid, all_data.lon_grid,
                                     nlat, nlon);
     
     // or *A00
-    A00[0] = get_surface_integral_int(all_data.ocean_function_currentEpoch,
+    A00[0] = get_surface_integral_int(all_data.ocn_current,
                                     all_data.lat_grid, all_data.lon_grid,
                                         nlat, nlon);
 
@@ -787,20 +789,20 @@ void construct_variables(char* inputfilename){
     all_data.lon_grid = (double *) malloc(nlon * sizeof(double));
     all_data.topo_presentday = (double *) malloc(nlat * nlon * sizeof(double));
     // all_data.ice_height_presentday = (double *) malloc(nlat * nlon * sizeof(double));
-    all_data.ice_height_currentEpoch = (double *) malloc(nlat * nlon * sizeof(double));
+    all_data.ice_height_current = (double *) malloc(nlat * nlon * sizeof(double));
     // all_data.groundIce_mask_presentday = (int *) malloc(nlat * nlon * sizeof(int));
-    all_data.groundIce_mask_currentEpoch = (int *) malloc(nlat * nlon * sizeof(int));
+    all_data.groundIce_mask_current = (int *) malloc(nlat * nlon * sizeof(int));
     // all_data.ocean_function_presentday = (int *) malloc(nlat * nlon * sizeof(int));
-    all_data.ocean_function_currentEpoch = (int *) malloc(nlat * nlon * sizeof(int));
-    all_data.groundIce_height_currentEpoch = (double *) malloc(nlat * nlon * sizeof(double));
-    all_data.groundIce_height_initialEpoch = (double *) malloc(nlat * nlon * sizeof(double));
-    all_data.ocean_function_initialEpoch = (int *) malloc(nlat * nlon * sizeof(int));
-    all_data.prevIter_groundIce_height_currentEpoch = (double *) malloc(nlat * nlon * sizeof(double));
-    all_data.prevIter_groundIce_height_initialEpoch = (double *) malloc(nlat * nlon * sizeof(double));
-    all_data.topo_initialEpoch = (double *) malloc(nlat * nlon * sizeof(double));
-    all_data.prevIter_topo_initialEpoch = (double *) malloc(nlat * nlon * sizeof(double));
-    all_data.prev_ocean_function_currentEpoch = (int *) malloc(nlat * nlon * sizeof(int));
-    all_data.prev_ocean_function_initialEpoch = (int *) malloc(nlat * nlon * sizeof(int));
+    all_data.ocn_current = (int *) malloc(nlat * nlon * sizeof(int));
+    all_data.groundIce_height_current = (double *) malloc(nlat * nlon * sizeof(double));
+    all_data.groundIce_height_initial = (double *) malloc(nlat * nlon * sizeof(double));
+    all_data.ocn_initial = (int *) malloc(nlat * nlon * sizeof(int));
+    all_data.prevIter_groundIce_height_current = (double *) malloc(nlat * nlon * sizeof(double));
+    all_data.prevIter_groundIce_height_initial = (double *) malloc(nlat * nlon * sizeof(double));
+    all_data.topo_initial = (double *) malloc(nlat * nlon * sizeof(double));
+    all_data.prevIter_topo_initial = (double *) malloc(nlat * nlon * sizeof(double));
+    all_data.prevIter_ocn_current = (int *) malloc(nlat * nlon * sizeof(int));
+    all_data.prevIter_ocn_initial = (int *) malloc(nlat * nlon * sizeof(int));
 
     double dlat = 180.0 / nlat; // latitude grid size
     double dlon = 360.0 / nlon; // longitude grid size
@@ -829,7 +831,7 @@ void construct_variables(char* inputfilename){
     read_grid_file(all_data.topo_filename, all_data.topo_presentday);
 
     // load the initial epoch topo used in the previous iteration
-    read_grid_file(all_data.fn_prevIter_topo_initialEpoch, all_data.prevIter_topo_initialEpoch);
+    read_grid_file(all_data.fn_prevIter_topo_initialEpoch, all_data.prevIter_topo_initial);
 
     // get the present-day ice model data (why? This will be used in every other epoch)
     // all_data.ice_height_presentday already allocated
