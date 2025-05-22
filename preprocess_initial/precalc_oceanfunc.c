@@ -3,6 +3,20 @@
 input parameters are read from input file.
 
 
+Change log:
+
+2025-5-17: NEW initial topography estimation
+    - before the initial topography was approximated by the present-day topography
+    - Now, the correct the initial topography by using 1) isostasy approximation and 2) eustatic sea level change.
+    That is, assuming the difference between initial topo and present day topo are from:
+        1. isostasy
+        2. eustatic sea level change 
+    T_end - T_initial = - \Delta I * (RHO_ice/RHO_rock) + sealevel_relative2_presentday
+    T_end = topo_presentday
+    T_initial = topo_presentday + \Delta I * (RHO_ice/RHO_rock) - sealevel_relative2_presentday
+    where \Delta I is the change in ice thickness from initial to present day.
+
+
 Notes:
 
 1) order of grid nodes: first lon changes, then lat changes.
@@ -38,6 +52,8 @@ struct {
     double *lat_grid;
     double *lon_grid;
     double *topo_presentday;
+    double *topo_initialEpoch; // initial epoch topo
+    double *eustatic_sealevel_relative2presentday; // note this is relative to present day (change backward)
     double *ice_height_presentday;
     double *ice_height_currentEpoch;
     int *groundIce_mask_presentday;
@@ -53,6 +69,7 @@ struct {
 
 double RHO_water = 1000.0;
 double RHO_ice = 917.4;
+double RHO_rock = 3300.0;
 
 // function prototypes
 void construct_variables(char* inputfilename);
@@ -65,6 +82,8 @@ double get_surface_integral(const double * data, const double * lat_grid, const 
 double get_surface_integral_int(const int * mask, const double * lat_grid, const double * lon_grid, int nlat, int nlon);
 double solve_for_ocean_func(int epoch);
 void write_ice_ocean_func(int epoch);   
+
+void get_initial_topo();
 
 
 int main(int argc, char **argv)
@@ -132,6 +151,11 @@ int main(int argc, char **argv)
         printf("Ocean area: %f\n", ocean_area/(4*M_PI));
         fprintf(fp_log, "epoch: %d, ocean area: %f\n", epoch, ocean_area/(4.0*M_PI));
 
+        // get the initial topography, only for the first epoch
+        if(epoch == 0){
+            get_initial_topo();
+        }
+        
         // write to file
         write_ice_ocean_func(epoch);
     }
@@ -140,6 +164,53 @@ int main(int argc, char **argv)
     return 0;
 }
 
+/*
+get initial topography
+
+Need know the total ice height change from initial to present day,
+    IceThickness_presentday_grounded[i] = 
+        all_data.ice_height_presentday[i] * all_data.groundIce_mask_presentday[i]
+    groundIce_height_initialEpoch: absolute height of ground ice at initial epoch
+*/
+void get_initial_topo(){
+    int nlat = all_data.nlat;
+    int nlon = all_data.nlon;
+    const double * lat_grid = all_data.lat_grid;
+    const double * lon_grid = all_data.lon_grid;
+    
+    // eustatic correction
+    for (int i=0; i<nlat*nlon; i++){
+        all_data.topo_initialEpoch[i] = all_data.topo_presentday[i] - all_data.eustatic_sealevel_relative2presentday[0];
+    }
+    // isostatic correction
+    for (int i=0; i<nlat*nlon; i++){
+        all_data.topo_initialEpoch[i] = all_data.topo_initialEpoch[i] + (all_data.ice_height_presentday[i] * all_data.groundIce_mask_presentday[i]
+        - all_data.groundIce_height_initialEpoch[i]) * (RHO_ice/RHO_rock);
+    }
+
+    // write to file
+    char topo_filename[250];
+    sprintf(topo_filename, "%s/topo_initialEpoch", all_data.out_dir);
+    FILE * fp_topofile;
+    if((fp_topofile = fopen(topo_filename, "w")) == NULL){
+        fprintf(stderr, "Error: cannot open file %s\n", topo_filename);
+        return;
+    }
+
+    // write (lon, lat, topo) to file
+    int node;
+    for(int i=0; i<nlat; i++){
+        for(int j=0; j<nlon; j++){
+            node = i*nlon + j;
+            // write ice load
+            fprintf(fp_topofile, "%10.4E %10.4E %11.5E\n", lon_grid[j], lat_grid[i], 
+                    all_data.topo_initialEpoch[node]);
+        }
+    }
+    fclose(fp_topofile);
+    printf("Initial topography written to file: %s\n", topo_filename);
+    return;
+}
 
 /*
 solve_for_ocean_func:
@@ -264,6 +335,7 @@ double solve_for_ocean_func(int epoch){
 
     // Done with iterations
 
+    all_data.eustatic_sealevel_relative2presentday[epoch] = sealevel_relative2_presentday;
 
     // get current topo relative to sealevel, using sealevel_relative2_presentday
     for (int i=0; i<nlat*nlon; i++){
@@ -354,8 +426,9 @@ void write_ice_ocean_func(int epoch){
 
     double * topo_correction = (double *) malloc(nlat * nlon * sizeof(double));
 
+    // for topo correction, use the initial epoch topo
     for(int node=0; node<nlat*nlon; node++){
-        topo_correction[node] = all_data.topo_presentday[node] *
+        topo_correction[node] = all_data.topo_initialEpoch[node] *
                                 (all_data.ocean_function_currentEpoch[node] -
                                 all_data.ocean_function_initialEpoch[node]) *
                                 (RHO_water / RHO_ice);
@@ -464,6 +537,8 @@ void construct_variables(char* inputfilename){
     all_data.lat_grid = (double *) malloc(nlat * sizeof(double));
     all_data.lon_grid = (double *) malloc(nlon * sizeof(double));
     all_data.topo_presentday = (double *) malloc(nlat * nlon * sizeof(double));
+    all_data.topo_initialEpoch = (double *) malloc(nlat * nlon * sizeof(double));
+    all_data.eustatic_sealevel_relative2presentday = (double *) malloc(nepoch * sizeof(double));
     all_data.ice_height_presentday = (double *) malloc(nlat * nlon * sizeof(double));
     all_data.ice_height_currentEpoch = (double *) malloc(nlat * nlon * sizeof(double));
     all_data.groundIce_mask_presentday = (int *) malloc(nlat * nlon * sizeof(int));
