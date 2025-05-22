@@ -397,6 +397,17 @@ void helper_get_Delta_SL(int epoch, double * Delta_SL){
     free(dyn);
 }
 
+
+/*
+Why cann't I just call helper_get_Delta_SL() for presentday?
+    Because helper_get_Delta_SL() needs some variables named with "current", 
+    and the loop starts with epoch 0, all the *current* variables (like ice height current)
+    are with data for epoch 0, not the data for the present day (last epoch).
+    so I can not just call helper_get_Delta_SL(presentday_epoch, Delta_SL_presentday) for present day.
+
+    Unless I start the loop backward, from epoch n-1 to 0, then the first loop will be present day,
+    and all the current variables will be with data for present day.
+*/
 void helper_get_Delta_SL_presentday(double * Delta_SL_presentday)
 {
     int nlat = all_data.nlat;
