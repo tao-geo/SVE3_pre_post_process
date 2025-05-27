@@ -1,9 +1,9 @@
 CC = gcc
 TARGET = precalc_oceanfunc
 
-all: $(TARGET)
+all: $(TARGET).x
 
-$(TARGET): $(TARGET).c
+$(TARGET).x: $(TARGET).c
 	$(CC) -o $@ $< -lm
 
 clean:

@@ -190,12 +190,15 @@ void get_initial_topo(){
 
     // write to file
     char topo_filename[250];
-    sprintf(topo_filename, "%s/topo_initialEpoch", all_data.out_dir);
+    sprintf(topo_filename, "%s/paleotopo_epoch0.dat", all_data.out_dir);
     FILE * fp_topofile;
     if((fp_topofile = fopen(topo_filename, "w")) == NULL){
         fprintf(stderr, "Error: cannot open file %s\n", topo_filename);
         return;
     }
+
+    // write the header (nlon, nlat)
+    fprintf(fp_topofile, "%d %d\n", nlon, nlat);
 
     // write (lon, lat, topo) to file
     int node;
@@ -654,6 +657,9 @@ void read_grid_file(char * filename, double * griddata){
         exit(1);
         // return;
     }
+
+    // skip first line, which is the header
+    fgets(buffer, 250, fp_gridfile);
 
     int nlat = all_data.nlat;
     int nlon = all_data.nlon;

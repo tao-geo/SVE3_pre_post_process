@@ -6,6 +6,7 @@
 nepoch=122
 outdir=./ICE6G_original/
 mkdir -p $outdir
+echo "360 180" > header.txt
 
 for (( epoch=0; epoch<$nepoch; epoch++ ))
 do
@@ -18,9 +19,13 @@ do
 
     temp1=$infile
     # convert to ascii
-    gmt grd2xyz $temp1 > ${outdir}/ice180x360.${epoch} --FORMAT_FLOAT_OUT=%11.5E
+    gmt grd2xyz $temp1 > ${outdir}/ice180x360.${epoch}.temp --FORMAT_FLOAT_OUT=%11.5E
 
-    # rm $temp1
+    cat header.txt ${outdir}/ice180x360.${epoch}.temp > ${outdir}/ice180x360.${epoch}
+
+    rm ${outdir}/ice180x360.${epoch}.temp
     # exit
 done
+
+rm header.txt
 

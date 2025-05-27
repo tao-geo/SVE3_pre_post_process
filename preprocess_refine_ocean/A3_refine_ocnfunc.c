@@ -31,7 +31,7 @@ Notes:
     Function prototypes
 */
 void construct_variables(char* inputfilename);
-void read_grid_file(char * filename, double * griddata);
+void read_grid_file(char * filename, double * griddata, int nskip);
 void read_grid_file_int(char * filename, int * griddata, int nskip);
 void read_ice_height(const char * ice_prefix, int epoch, double * ice_height);
 double get_surface_integral_int(const int * mask, const double * lat_grid, const double * lon_grid, int nlat, int nlon);
@@ -314,10 +314,10 @@ void helper_get_Delta_SL(int epoch, double * Delta_SL){
     double * u = (double *) malloc(nlat * nlon * sizeof(double));
 
     sprintf(temp_char, "%s.map_geoid.epoch%d.regular.xyz", all_data.prevIter_ug_prefix, epoch);
-    read_grid_file(temp_char, g);
+    read_grid_file(temp_char, g, 0);
 
     sprintf(temp_char, "%s.map_uplift.epoch%d.regular.xyz", all_data.prevIter_ug_prefix, epoch);
-    read_grid_file(temp_char, u);
+    read_grid_file(temp_char, u, 0);
 
 
     /*
@@ -749,10 +749,10 @@ void construct_variables(char* inputfilename){
     // }
 
     // load_present_topo
-    read_grid_file(all_data.topo_filename, all_data.topo_presentday);
+    read_grid_file(all_data.topo_filename, all_data.topo_presentday, 1);
 
     // load the initial epoch topo used in the previous iteration
-    read_grid_file(all_data.fn_prevIter_topo_initialEpoch, all_data.prevIter_topo_initial);
+    read_grid_file(all_data.fn_prevIter_topo_initialEpoch, all_data.prevIter_topo_initial, 1);
 
     // get prevIter_groundIce_height_initial and prevIter_ocn_initial
     char prev_ocean_filename[250];
@@ -776,7 +776,7 @@ Read grid files, including ice and topo.
 The grid data should be (lon, lat, data) format, where lon is increasing (between 0 to 360), lat is decreasing (between 90 to -90).
 The grid order is, first lon changes, then lat changes.
 */
-void read_grid_file(char * filename, double * griddata){
+void read_grid_file(char * filename, double * griddata, int nskips){
     FILE * fp_gridfile; // file pointer for grid file
     char buffer[250];
     double lon, lat, data;
@@ -785,6 +785,12 @@ void read_grid_file(char * filename, double * griddata){
         fprintf(stderr, "Error: cannot open file %s\n", filename);
         exit(1);
         // return;
+    }
+
+    if (nskips > 0){
+        for(int i=0; i<nskips; i++){
+            fgets(buffer, 250, fp_gridfile);
+        }
     }
 
     int nlat = all_data.nlat;
@@ -881,7 +887,7 @@ void read_ice_height(const char * ice_prefix, int epoch, double * ice_height){
     printf("Reading ice model file: %s\n", ice_filename);
 
     // read ice model data
-    read_grid_file(ice_filename, ice_height);
+    read_grid_file(ice_filename, ice_height, 1);
 
     return;
 
