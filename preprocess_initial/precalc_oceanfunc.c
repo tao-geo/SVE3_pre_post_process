@@ -15,7 +15,9 @@ Change log:
     T_end = topo_presentday
     T_initial = topo_presentday + \Delta I * (RHO_ice/RHO_rock) - sealevel_relative2_presentday
     where \Delta I is the change in ice thickness from initial to present day.
-
+    (However, in this version, I still use the present-day topography as the initial topography for 
+    topo correction, to make it consistent with the previous version.
+    User can change this by modifying line 436 in this file.)
 
 Notes:
 
@@ -431,7 +433,7 @@ void write_ice_ocean_func(int epoch){
 
     // for topo correction, use the initial epoch topo
     for(int node=0; node<nlat*nlon; node++){
-        topo_correction[node] = all_data.topo_initialEpoch[node] *
+        topo_correction[node] = all_data.topo_presentday[node] *
                                 (all_data.ocean_function_currentEpoch[node] -
                                 all_data.ocean_function_initialEpoch[node]) *
                                 (RHO_water / RHO_ice);
