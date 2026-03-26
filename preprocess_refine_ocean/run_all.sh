@@ -7,17 +7,17 @@
 
 
 # parameters to set:
-load_stages_time_file=/glade/derecho/scratch/taoyuan/Proj_Nonlinear_GIA/ice6g_40ka_stages_timeB.dat  
+load_stages_time_file=/glade/work/taoyuan/Proj_RSL_Maine/SVEcases/ice6g_122ka_stages_timeA.dat
                         # the stage_time file used in SVE calculation
                         # filename, to save file for epoch to timestep conversion
-SVE_output_prefix=/glade/derecho/scratch/taoyuan/Proj_Nonlinear_GIA/case_a0/case_a0
+SVE_output_prefix=/glade/derecho/scratch/taoyuan/Proj_RSL_Maine/case_v3/case_v3
 
-postp_id=case_a0
+postp_id=case_v3
 
 ncpu_surface=192        #48    # number of cpus in the surface
 ncpu_z=2            # number of cpus in the z direction
 node_x_y=33         #41      # number of nodes in x and y directions (for each cpu)
-nepochs=81
+nepochs=122
 resolution=1    # resolution of regular grid (in degree)
 
 
