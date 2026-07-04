@@ -1,0 +1,21 @@
+#!/bin/bash
+#PBS -N test_pre-postp
+#PBS -A UCUD0007
+#PBS -j oe
+#PBS -l job_priority=premium
+#PBS -q main
+#PBS -l walltime=12:00:00
+#PBS -l select=1:ncpus=128:mpiprocs=128:ompthreads=1
+#PBS -m abe
+#PBS -M tao.yuan@colorado.edu
+
+### Set temp to scratch
+export TMPDIR=${SCRATCH}/temp && mkdir -p $TMPDIR
+
+# module load gcc
+
+INPUT="inputfile6Gc_VM5a"
+mpiexec -n 96 ../CitcomSVE3_GitHub/CitcomSVE-3.0/bin/CitcomSFull ${INPUT}
+
+# n=864 for weak margin cases
+# n=384 for others.
